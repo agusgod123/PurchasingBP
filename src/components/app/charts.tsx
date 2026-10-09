@@ -74,6 +74,8 @@ export function ColumnChart({ data, format = defaultFmt, height = 160 }: { data:
   const max = Math.max(...data.map((d) => d.value), 0);
   const niceMax = max === 0 ? 1 : niceCeil(max);
   const ticks = [niceMax, niceMax / 2, 0];
+  const dense = data.length > 24;
+  const labelEvery = Math.ceil(data.length / 12);
   return (
     <div className="space-y-2">
       <div className="flex justify-end">
@@ -94,9 +96,9 @@ export function ColumnChart({ data, format = defaultFmt, height = 160 }: { data:
             </tr>
           </thead>
           <tbody>
-            {data.map((d) => (
-              <tr key={d.label} className="border-b last:border-0">
-                <td className="py-1.5">{d.label}</td>
+            {data.map((d, i) => (
+              <tr key={i} className="border-b last:border-0">
+                <td className="py-1.5">{d.hint ?? d.label}</td>
                 <td className="tabular py-1.5 text-right">{format(d.value)}</td>
               </tr>
             ))}
@@ -117,13 +119,14 @@ export function ColumnChart({ data, format = defaultFmt, height = 160 }: { data:
                 <span key={t} className={cn("block border-t", t === 0 ? "border-border" : "border-dashed border-border/60")} />
               ))}
             </div>
-            <div className="relative flex items-end gap-1.5 sm:gap-3" style={{ height }}>
+            <div className={cn("relative flex items-end", dense ? "gap-px sm:gap-0.5" : "gap-1.5 sm:gap-3")} style={{ height }}>
               {data.map((d, i) => {
                 const h = ((height - 24) * d.value) / niceMax;
                 const last = i === data.length - 1;
+                const showLabel = data.length <= 16 || last || i % labelEvery === 0;
                 return (
                   <div
-                    key={d.label}
+                    key={i}
                     className="relative flex h-full min-w-0 flex-1 flex-col items-center justify-end outline-none"
                     tabIndex={0}
                     onPointerEnter={() => setActive(i)}
@@ -137,9 +140,17 @@ export function ColumnChart({ data, format = defaultFmt, height = 160 }: { data:
                       className={cn("block w-full max-w-10 rounded-t-[4px] transition-opacity", active !== null && active !== i && "opacity-60")}
                       style={{ height: Math.max(h, d.value > 0 ? 2 : 0), background: "var(--viz-1)" }}
                     />
-                    <span className="mt-1.5 h-[18px] truncate text-[11px] text-muted-foreground">{d.label}</span>
+                    <span className={cn("mt-1.5 h-[18px] text-[11px] text-muted-foreground", dense ? "overflow-visible whitespace-nowrap" : "truncate", !showLabel && "invisible")}>
+                      {d.label}
+                    </span>
                     {active === i && (
-                      <span className="pointer-events-none absolute bottom-full z-10 mb-1 whitespace-nowrap rounded-md border bg-popover px-2.5 py-1 text-xs shadow-md">
+                      <span
+                        className={cn(
+                          "pointer-events-none absolute bottom-full z-10 mb-1 whitespace-nowrap rounded-md border bg-popover px-2.5 py-1 text-xs shadow-md",
+                          i < 2 && data.length > 4 && "left-0",
+                          i > data.length - 3 && data.length > 4 && "right-0",
+                        )}
+                      >
                         <strong className="tabular">{format(d.value)}</strong> <span className="text-muted-foreground">· {d.hint ?? d.label}</span>
                       </span>
                     )}

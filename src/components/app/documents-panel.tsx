@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DOCUMENT_TYPE } from "@/lib/status";
-import { formatDateTime } from "@/lib/format";
+import { formatBytes, formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { completeUploadAction, deleteDocumentAction, requestUploadAction } from "@/app/(app)/documents-actions";
 import type { DocumentType } from "@/generated/prisma/enums";
@@ -41,13 +41,7 @@ function mimeOf(file: File): string {
   return EXT_MIME[ext] ?? file.type ?? "application/octet-stream";
 }
 
-function sizeLabel(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
-function FileIcon({ mime }: { mime: string }) {
+export function FileIcon({ mime }: { mime: string }) {
   if (mime.startsWith("image/")) return <FileImage className="size-4 text-violet-500" />;
   if (mime.includes("spreadsheet")) return <FileSpreadsheet className="size-4 text-emerald-600" />;
   return <FileText className="size-4 text-blue-600" />;
@@ -137,7 +131,7 @@ export function DocumentsPanel({
                   {d.originalFilename}
                 </a>
                 <div className="truncate text-xs text-muted-foreground">
-                  {DOCUMENT_TYPE[d.documentType]} · {sizeLabel(d.sizeBytes)}
+                  {DOCUMENT_TYPE[d.documentType]} · {formatBytes(d.sizeBytes)}
                   {!compact && ` · ${d.uploadedByName} · ${formatDateTime(d.createdAt)}`}
                 </div>
               </div>

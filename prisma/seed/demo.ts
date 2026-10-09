@@ -237,13 +237,19 @@ async function main() {
   const dewi = await ctx("dewi");
   const rina = await ctx("rina");
 
+  const catalogItems = await db.catalogItem.findMany();
+  const fromCatalog = (name: string) => {
+    const c = catalogItems.find((x) => x.name === name);
+    return c ? { catalogItemId: c.id, categoryId: c.categoryId } : {};
+  };
+
   async function submit(c: ActorContext, title: string, reason: string, items: Array<[string, string, string, string, string]>, priority: "NORMAL" | "HIGH" | "URGENT" = "NORMAL") {
     const draft = await createDraft(c, {
       title,
       generalReason: reason,
       requestedPriority: priority,
       neededDate: future(14),
-      items: items.map(([itemName, specification, quantity, unitName, estimatedUnitPrice]) => ({ itemName, specification, quantity, unitName, estimatedUnitPrice })),
+      items: items.map(([itemName, specification, quantity, unitName, estimatedUnitPrice]) => ({ itemName, specification, quantity, unitName, estimatedUnitPrice, ...fromCatalog(itemName) })),
     });
     await attach({ requestId: draft.id }, "REQUEST_ATTACHMENT", c.user.id, "memo-kebutuhan.pdf");
     await submitRequest(c, draft.id, { lockVersion: draft.lockVersion });
@@ -304,7 +310,7 @@ async function main() {
     title: "Monitor tambahan",
     generalReason: "",
     neededDate: future(30),
-    items: [{ itemName: "Monitor 24 inci", specification: "IPS Full HD, HDMI", quantity: "1", unitName: "unit", estimatedUnitPrice: "2100000" }],
+    items: [{ itemName: "Monitor 24 inci", specification: "IPS Full HD, HDMI", quantity: "1", unitName: "unit", estimatedUnitPrice: "2100000", ...fromCatalog("Monitor 24 inci") }],
   });
 
   console.log("✓ Data demo siap. Akun: admin, budi, dewi, sari, andi, rina, yusuf, lina, hendra — password: " + PASSWORD);

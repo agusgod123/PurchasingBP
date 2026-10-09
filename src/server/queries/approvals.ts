@@ -177,7 +177,7 @@ export async function getAssignmentDetail(user: AuthUser, assignmentId: string) 
   const route = detail.approvals.find((a) => a.id === instance.id)!;
 
   // Perbandingan dengan versi sebelumnya (untuk pengajuan yang dikirim ulang).
-  let diff: Array<{ itemName: string; change: string }> = [];
+  const diff: Array<{ itemName: string; change: string }> = [];
   if (instance.subjectType === "REQUEST" && instance.requestVersion && instance.requestVersion.versionNumber > 1) {
     const prev = await db.requestVersion.findUnique({
       where: { requestId_versionNumber: { requestId: instance.requestId, versionNumber: instance.requestVersion.versionNumber - 1 } },

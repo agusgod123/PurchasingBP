@@ -84,6 +84,8 @@ const UNITS = ["unit", "buah", "pcs", "set", "paket", "rim", "box", "lusin", "li
 
 let keySeq = 0;
 const newKey = () => `k${Date.now().toString(36)}${(keySeq++).toString(36)}`;
+/** Dipanggil hanya dari event handler / initializer, bukan saat render. */
+const nowMs = () => Date.now();
 
 function emptyItem(): ItemDraft {
   return blankItem(newKey());
@@ -171,7 +173,7 @@ export function RequestForm({
   const [data, setData] = useState<FormDataShape>(initial);
   const [requestId, setRequestId] = useState(initialId);
   const lockRef = useRef(initialLock ?? 0);
-  const [save, setSave] = useState<SaveState>({ kind: initialId ? "server" : "idle", at: Date.now() } as SaveState);
+  const [save, setSave] = useState<SaveState>(() => ({ kind: initialId ? "server" : "idle", at: nowMs() }) as SaveState);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [restore, setRestore] = useState<{ data: FormDataShape; at: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -186,6 +188,8 @@ export function RequestForm({
   useEffect(() => {
     const local = readLocal(initialId);
     const serverTime = serverUpdatedAt ? new Date(serverUpdatedAt).getTime() : 0;
+    // localStorage hanya tersedia di browser, jadi dibaca setelah mount (bukan saat render) agar hidrasi konsisten.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (local && local.at > serverTime + 1000 && JSON.stringify(local.data) !== JSON.stringify(initial)) setRestore(local);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -240,7 +244,7 @@ export function RequestForm({
       return next;
     });
     dirtyRef.current = true;
-    setSave({ kind: "local", at: Date.now() });
+    setSave({ kind: "local", at: nowMs() });
   };
 
   useEffect(() => {
