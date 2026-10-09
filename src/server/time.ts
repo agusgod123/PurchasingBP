@@ -93,6 +93,35 @@ export function workingHoursBetween(start: Date, end: Date, cal: WorkCalendar): 
   return Math.round(total * 100) / 100;
 }
 
+/**
+ * Menambahkan sejumlah jam kerja aktif ke suatu instant (melewati malam, akhir
+ * pekan, dan hari libur). Dipakai untuk tenggat persetujuan.
+ */
+export function addWorkingHours(start: Date, hours: number, cal: WorkCalendar): Date {
+  if (hours <= 0) return start;
+  const tz = cal.timeZone ?? APP_TIMEZONE;
+  let remainingMs = hours * 3_600_000;
+  let cursorKey = dateKeyInTz(start, tz);
+  for (let guard = 0; guard < 3660; guard++) {
+    const dayUtc = dateOnly(cursorKey);
+    const weekday = ((dayUtc.getUTCDay() + 6) % 7) + 1;
+    if (cal.workDays.includes(weekday) && !cal.holidays.has(cursorKey)) {
+      const offset = tzOffsetMinutes(dayUtc, tz);
+      const workStart = dayUtc.getTime() + cal.startHour * 3_600_000 - offset * 60_000;
+      const workEnd = dayUtc.getTime() + cal.endHour * 3_600_000 - offset * 60_000;
+      const from = Math.max(workStart, start.getTime());
+      if (workEnd > from) {
+        const available = workEnd - from;
+        if (available >= remainingMs) return new Date(from + remainingMs);
+        remainingMs -= available;
+      }
+    }
+    cursorKey = dateKeyInTz(addDays(dayUtc, 1), "UTC");
+  }
+  // Kalender tanpa hari kerja: jatuh kembali ke jam kalender.
+  return addHours(start, hours);
+}
+
 /** Instant tengah malam lokal (zona waktu aplikasi) untuk tanggal YYYY-MM-DD. */
 export function zonedMidnight(dateKey: string, timeZone = APP_TIMEZONE): Date {
   const utcMidnight = dateOnly(dateKey);

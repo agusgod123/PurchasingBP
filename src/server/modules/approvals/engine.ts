@@ -21,7 +21,8 @@ import type {
   StepCondition,
 } from "@/generated/prisma/enums";
 import { Decimal } from "@/server/money";
-import { addHours } from "@/server/time";
+import { addWorkingHours } from "@/server/time";
+import { loadWorkCalendar } from "@/server/calendar";
 import { getSettings } from "@/server/settings";
 import { notify } from "@/server/notifications/notify";
 import { ForbiddenError, RuleError, ValidationError } from "@/server/errors";
@@ -355,6 +356,7 @@ async function activateNext(tx: Tx, ctx: ActorContext, instanceId: string): Prom
         ? [remaining[0]]
         : [];
   const settings = await getSettings();
+  const calendar = toActivate.length ? await loadWorkCalendar() : null;
   const now = new Date();
   for (const step of toActivate) {
     await tx.approvalStep.update({ where: { id: step.id }, data: { status: "PENDING", startedAt: now } });
@@ -362,7 +364,7 @@ async function activateNext(tx: Tx, ctx: ActorContext, instanceId: string): Prom
       const dueHours = step.ruleStep?.dueHours ?? settings["approval.default_due_hours"];
       await tx.approvalAssignment.update({
         where: { id: a.id },
-        data: { status: "PENDING", activatedAt: now, dueAt: dueHours ? addHours(now, dueHours) : null },
+        data: { status: "PENDING", activatedAt: now, dueAt: dueHours && calendar ? addWorkingHours(now, dueHours, calendar) : null },
       });
       const label = APPROVAL_SUBJECT[instance.subjectType];
       await notify(tx, {
