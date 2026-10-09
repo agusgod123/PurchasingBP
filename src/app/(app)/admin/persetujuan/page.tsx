@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AlertTriangle, GitBranch, Plus } from "lucide-react";
+import { AlertTriangle, Plus } from "lucide-react";
 import { requirePermission } from "@/server/auth/current";
 import { db } from "@/server/db";
-import { EmptyState, Money, PageHeader, Section, StatusBadge } from "@/components/app/ui";
+import { Money, PageHeader, Section, StatusBadge } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PERMISSIONS } from "@/lib/permissions";
@@ -82,7 +82,7 @@ export default async function ApprovalRulesPage() {
           return (
             <Section key={s} title={APPROVAL_SUBJECT[s]} description={s === "CHANGE_REQUEST" && !list.some((r) => r.isActive) ? "Tanpa aturan aktif: persetujuan bawaan oleh pemohon + atasan langsung pemohon." : undefined} className="overflow-hidden [&>div]:p-0 sm:[&>div]:p-0">
               {list.length === 0 ? (
-                <EmptyState icon={GitBranch} title="Belum ada aturan" className="m-4 border-0" />
+                <p className="px-5 py-4 text-sm text-muted-foreground">Belum ada aturan.</p>
               ) : (
                 <Table>
                   <TableHeader>

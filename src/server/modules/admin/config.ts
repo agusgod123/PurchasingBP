@@ -4,7 +4,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { audit } from "@/server/audit";
 import { transaction } from "@/server/idempotency";
 import { can } from "@/server/auth/user";
-import { invalidateSettingsCache } from "@/server/settings";
+import { getSettings, invalidateSettingsCache } from "@/server/settings";
 import { DEFAULT_SETTINGS, type Settings } from "@/server/settings-defaults";
 import { ForbiddenError, NotFoundError, RuleError, ValidationError } from "@/server/errors";
 import { PERMISSIONS, type PermissionCode } from "@/lib/permissions";
@@ -197,9 +197,10 @@ const settingsSchema = z.object({
 export async function saveSettings(ctx: ActorContext, input: Partial<Settings>) {
   requirePerm(ctx, PERMISSIONS.SETTINGS_MANAGE);
   const data = settingsSchema.partial().parse(input);
-  const start = data["work_calendar.start_hour"];
-  const end = data["work_calendar.end_hour"];
-  if (start !== undefined && end !== undefined && end <= start) {
+  const current = await getSettings();
+  const start = data["work_calendar.start_hour"] ?? current["work_calendar.start_hour"];
+  const end = data["work_calendar.end_hour"] ?? current["work_calendar.end_hour"];
+  if (end <= start) {
     throw new ValidationError("Jam selesai harus setelah jam mulai.", { "work_calendar.end_hour": "Harus setelah jam mulai" });
   }
   await transaction(async (tx) => {
