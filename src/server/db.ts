@@ -6,7 +6,8 @@ function createClient() {
   const adapter = new PrismaPg({
     connectionString: process.env.DATABASE_URL,
     // Serverless (Vercel/Netlify) membuka banyak instance; batasi koneksi per instance.
-    max: Number(process.env.DATABASE_POOL_MAX ?? (process.env.VERCEL || process.env.NETLIFY ? 1 : 10)),
+    // Minimal 2: beberapa pembacaan (mis. pengaturan ber-cache) berjalan di luar transaksi aktif.
+    max: Math.max(2, Number(process.env.DATABASE_POOL_MAX ?? (process.env.VERCEL || process.env.NETLIFY ? 3 : 10))),
   });
   return new PrismaClient({
     adapter,

@@ -85,16 +85,19 @@ async function writeItems(tx: Tx, requestId: string, items: ReturnType<typeof no
   const keep = new Set(items.filter((i) => i.id).map((i) => i.id!));
   const toDelete = existing.filter((e) => !keep.has(e.id)).map((e) => e.id);
   if (toDelete.length) await tx.requestItem.deleteMany({ where: { id: { in: toDelete } } });
+  const itemIds: string[] = [];
   for (const it of items) {
     const { id, ...data } = it;
     if (id && existing.some((e) => e.id === id)) {
       await tx.requestItem.update({ where: { id }, data });
+      itemIds.push(id);
     } else {
-      await tx.requestItem.create({ data: { ...data, requestId } });
+      const created = await tx.requestItem.create({ data: { ...data, requestId } });
+      itemIds.push(created.id);
     }
   }
   const total = sum(items.map((i) => lineTotal(i.quantity, i.estimatedUnitPrice)));
-  return total;
+  return { total, itemIds };
 }
 
 export async function createDraft(ctx: ActorContext, input: RequestDraftInput, idempotencyKey?: string) {
@@ -114,13 +117,13 @@ export async function createDraft(ctx: ActorContext, input: RequestDraftInput, i
         neededDate: data.neededDate ? dateOnly(data.neededDate) : dateOnly(dateKeyInTz()),
       },
     });
-    const total = await writeItems(tx, request.id, normalizeItems(data.items));
+    const { total, itemIds } = await writeItems(tx, request.id, normalizeItems(data.items));
     await tx.request.update({ where: { id: request.id }, data: { estimatedTotal: total } });
     await tx.requestStatusHistory.create({
       data: { requestId: request.id, fromStatus: null, toStatus: "DRAFT", changedById: ctx.user.id },
     });
     await audit(tx, ctx, { action: "request.create", entityType: "request", entityId: request.id });
-    return { id: request.id, lockVersion: 0 };
+    return { id: request.id, lockVersion: 0, itemIds };
   });
 }
 
@@ -139,7 +142,7 @@ export async function updateDraft(ctx: ActorContext, requestId: string, input: R
   return transaction(async (tx) => {
     const req = await loadOwnEditable(tx, ctx, requestId);
     if (req.lockVersion !== lockVersion) throw new ConflictError();
-    const total = await writeItems(tx, requestId, normalizeItems(data.items));
+    const { total, itemIds } = await writeItems(tx, requestId, normalizeItems(data.items));
     const updated = await tx.request.update({
       where: { id: requestId },
       data: {
@@ -152,7 +155,7 @@ export async function updateDraft(ctx: ActorContext, requestId: string, input: R
         lockVersion: { increment: 1 },
       },
     });
-    return { id: requestId, lockVersion: updated.lockVersion };
+    return { id: requestId, lockVersion: updated.lockVersion, itemIds };
   });
 }
 

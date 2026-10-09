@@ -68,8 +68,8 @@ export async function ctxOf(userId: string): Promise<ActorContext> {
   return { user: u, ip: "127.0.0.1", userAgent: "vitest" };
 }
 
-export async function createRule(input: Prisma.ApprovalRuleCreateInput) {
-  return db.approvalRule.create({ data: { code: `R-${randomUUID().slice(0, 8)}`, ...input } as Prisma.ApprovalRuleCreateInput });
+export async function createRule(input: Omit<Prisma.ApprovalRuleCreateInput, "code"> & { code?: string }) {
+  return db.approvalRule.create({ data: { code: `R-${randomUUID().slice(0, 8)}`, ...input } });
 }
 
 /** Menambahkan dokumen siap (tanpa menyentuh storage) untuk memenuhi aturan dokumen wajib. */

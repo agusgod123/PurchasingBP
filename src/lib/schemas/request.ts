@@ -30,6 +30,20 @@ export const requestItemInput = z.object({
 
 export type RequestItemInput = z.input<typeof requestItemInput>;
 
+/** Item pada draf boleh belum lengkap; kelengkapan diperiksa saat dikirim. */
+export const requestItemDraftInput = z.object({
+  id: z.string().uuid().optional(),
+  catalogItemId: z.string().uuid().nullish(),
+  categoryId: z.string().uuid().nullish(),
+  itemName: z.string().trim().max(255).default(""),
+  specification: z.string().trim().max(5000).default(""),
+  quantity: decimalString("Jumlah").default("1"),
+  unitName: z.string().trim().max(50).default("unit"),
+  estimatedUnitPrice: decimalString("Estimasi harga", { allowZero: true }).default("0"),
+  reason: z.string().trim().max(2000).nullish(),
+  neededDate: dateString.nullish().or(z.literal("")),
+});
+
 export const PRIORITY_VALUES = ["LOW", "NORMAL", "HIGH", "URGENT"] as const;
 
 /** Draf boleh belum lengkap; validasi lengkap terjadi saat dikirim. */
@@ -38,7 +52,7 @@ export const requestDraftInput = z.object({
   generalReason: z.string().trim().max(5000).default(""),
   requestedPriority: z.enum(PRIORITY_VALUES).default("NORMAL"),
   neededDate: dateString.nullish().or(z.literal("")),
-  items: z.array(requestItemInput).max(100, "Maksimal 100 item per pengajuan").default([]),
+  items: z.array(requestItemDraftInput).max(100, "Maksimal 100 item per pengajuan").default([]),
 });
 
 export type RequestDraftInput = z.input<typeof requestDraftInput>;
