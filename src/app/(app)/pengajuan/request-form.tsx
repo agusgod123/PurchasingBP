@@ -605,6 +605,7 @@ function ItemEditor({
   onDuplicate: () => void;
 }) {
   const [focused, setFocused] = useState(false);
+  const fid = `item-${item.key}`;
   const q = item.itemName.trim().toLowerCase();
   const suggestions = useMemo(
     () =>
@@ -624,8 +625,11 @@ function ItemEditor({
         </span>
         <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-[1fr_200px]">
           <div className="relative space-y-1.5">
-            <Label className="text-[13px]">Nama barang *</Label>
+            <Label className="text-[13px]" htmlFor={`${fid}-name`}>
+              Nama barang *
+            </Label>
             <Input
+              id={`${fid}-name`}
               value={item.itemName}
               onChange={(ev) => onChange({ itemName: ev.target.value, catalogItemId: null })}
               onFocus={() => setFocused(true)}
@@ -666,9 +670,11 @@ function ItemEditor({
             {e("itemName") && <p className="text-[13px] text-destructive">{e("itemName")}</p>}
           </div>
           <div className="space-y-1.5">
-            <Label className="text-[13px]">Kategori</Label>
+            <Label className="text-[13px]" htmlFor={`${fid}-cat`}>
+              Kategori
+            </Label>
             <Select value={item.categoryId ?? undefined} onValueChange={(v) => onChange({ categoryId: v })}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full" id={`${fid}-cat`}>
                 <SelectValue placeholder="Pilih kategori" />
               </SelectTrigger>
               <SelectContent>
@@ -681,8 +687,11 @@ function ItemEditor({
             </Select>
           </div>
           <div className="space-y-1.5 sm:col-span-2">
-            <Label className="text-[13px]">Spesifikasi *</Label>
+            <Label className="text-[13px]" htmlFor={`${fid}-spec`}>
+              Spesifikasi *
+            </Label>
             <Textarea
+              id={`${fid}-spec`}
               value={item.specification}
               onChange={(ev) => onChange({ specification: ev.target.value })}
               placeholder="Merek/tipe, ukuran, warna, atau standar yang dibutuhkan"
@@ -693,16 +702,22 @@ function ItemEditor({
           </div>
           <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-[110px_140px_1fr_auto]">
             <div className="space-y-1.5">
-              <Label className="text-[13px]">Jumlah *</Label>
-              <QtyInput value={item.quantity} onValueChange={(v) => onChange({ quantity: v })} aria-invalid={!!e("quantity")} />
+              <Label className="text-[13px]" htmlFor={`${fid}-qty`}>
+                Jumlah *
+              </Label>
+              <QtyInput id={`${fid}-qty`} value={item.quantity} onValueChange={(v) => onChange({ quantity: v })} aria-invalid={!!e("quantity")} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[13px]">Satuan *</Label>
-              <Input value={item.unitName} onChange={(ev) => onChange({ unitName: ev.target.value })} list="units" aria-invalid={!!e("unitName")} />
+              <Label className="text-[13px]" htmlFor={`${fid}-unit`}>
+                Satuan *
+              </Label>
+              <Input id={`${fid}-unit`} value={item.unitName} onChange={(ev) => onChange({ unitName: ev.target.value })} list="units" aria-invalid={!!e("unitName")} />
             </div>
             <div className="col-span-2 space-y-1.5 sm:col-span-1">
-              <Label className="text-[13px]">Estimasi harga / satuan</Label>
-              <MoneyInput value={item.estimatedUnitPrice} onValueChange={(v) => onChange({ estimatedUnitPrice: v })} placeholder="0" />
+              <Label className="text-[13px]" htmlFor={`${fid}-price`}>
+                Estimasi harga / satuan
+              </Label>
+              <MoneyInput id={`${fid}-price`} value={item.estimatedUnitPrice} onValueChange={(v) => onChange({ estimatedUnitPrice: v })} placeholder="0" />
             </div>
             <div className="col-span-2 flex items-end justify-between gap-2 sm:col-span-1 sm:flex-col sm:items-end sm:justify-end">
               <span className="text-[13px] text-muted-foreground sm:hidden">Subtotal</span>
