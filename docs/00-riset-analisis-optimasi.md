@@ -316,9 +316,33 @@ Sangat cepat untuk aplikasi internal yang dominan panel admin. Cocok **jika** ti
 
 **Alasan memilih A:** dokumen sudah dirancang per modul NestJS. Aturan "backend adalah sumber kebenaran" lebih mudah ditegakkan dengan *guard* dan *service* NestJS. OpenAPI siap untuk integrasi HRIS/keuangan di masa depan. TypeScript dipakai end-to-end. Biaya tambahannya hanya satu container lagi, yang tidak berarti dengan Docker Compose.
 
+### Keputusan akhir (dikonfirmasi pengguna)
+
+Pengguna sudah memakai **Supabase** untuk database dan ingin deploy lewat **Netlify/Vercel**. Platform
+serverless tidak menjalankan container NestJS terpisah secara alami, sehingga dipilih **Opsi B yang
+diperkuat**: satu aplikasi Next.js full-stack dengan lapisan domain yang tegas.
+
+| Lapisan | Teknologi final |
+|---|---|
+| Aplikasi | **Next.js 16** (App Router, Server Components, Server Actions) + TypeScript, React 19 |
+| UI | Tailwind CSS v4 + shadcn/ui + lucide; mode gelap; responsif ponsel |
+| Validasi | Zod (dipakai bersama form & server) |
+| Domain | `src/server/modules/*` — service murni per modul (pengajuan, persetujuan, purchasing, penerimaan, serah terima, pembatalan, dokumen, admin). UI tidak pernah menulis ke database langsung. |
+| Data | **PostgreSQL di Supabase** via Prisma 7 + adapter `pg` (transaction pooler untuk runtime, session pooler untuk migrasi). RLS aktif tanpa policy → Data API publik Supabase tertutup. |
+| File | **Supabase Storage** (bucket privat, unggah langsung dari browser via *signed URL*); driver lokal untuk Docker |
+| Auth | Sesi cookie HttpOnly di PostgreSQL, Argon2id, penguncian akun & batas percobaan per IP |
+| Job | Outbox email + endpoint `/api/cron/*` dipanggil Vercel Cron / Supabase `pg_cron` / Netlify Scheduled Functions |
+| Ekspor | ExcelJS + pdfmake (font tertanam, tanpa akses file lokal) |
+| Uji | Vitest (unit + integrasi ke PostgreSQL asli) + Playwright (E2E desktop & ponsel) |
+| Deploy | **Vercel (region sin1) + Supabase (Singapura)** — utama; Netlify dan Docker Compose on-premise sebagai alternatif |
+
+Batas backend/frontend tetap tegas karena semua aturan bisnis berada di *service layer* yang diuji
+terpisah; bila kelak dibutuhkan API untuk aplikasi mobile/HRIS, *route handler* tinggal memanggil
+service yang sama.
+
 ---
 
-## 8. Rencana Build (setelah konfirmasi)
+## 8. Rencana Build (setelah konfirmasi) — status: selesai
 
 1. Scaffold monorepo, Docker Compose dev, lint, typecheck, test.
 2. Skema Prisma lengkap (bagian 6), migrasi, seed data contoh (bagian, pengguna per peran, katalog, vendor, aturan persetujuan contoh yang **ditandai sebagai contoh**).

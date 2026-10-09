@@ -147,9 +147,13 @@ async function pendingReport({ f, depts }: Ctx): Promise<ReportResult> {
   const today = todayDateOnly();
   const out: ReportRow[] = rows.map((r) => {
     const waiting = r.approvalInstances.flatMap((i) => i.steps.flatMap((s) => s.assignments.map((a) => a.approver.fullName)));
+    const waitingFor = r.approvalInstances.find((i) => i.subjectType !== "REQUEST")?.subjectType;
     const pos = r.purchaseOrderLinks.map((l) => l.purchaseOrder).filter((p) => p.status !== "CANCELLED");
     let position = REQUEST_STATUS[r.status].label;
-    if (waiting.length) position = `Menunggu: ${[...new Set(waiting)].join(", ")}`;
+    if (waiting.length) {
+      const what = waitingFor ? `persetujuan ${APPROVAL_SUBJECT[waitingFor].toLowerCase()}` : "persetujuan";
+      position = `Menunggu ${what}: ${[...new Set(waiting)].join(", ")}`;
+    }
     else if (pos.length) position = pos.map((p) => `${p.poNumber} ${PO_STATUS[p.status].label}${p.currentEta ? ` (ETA ${dateKey(p.currentEta)})` : ""}`).join("; ");
     else if (r.status === "ON_HOLD" && r.holdReason) position = `Ditahan: ${r.holdReason}`;
     const late = r.neededDate < today ? Math.floor(days(r.neededDate, today)) : null;

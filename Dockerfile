@@ -36,8 +36,8 @@ CMD ["sh", "-c", "pnpm exec prisma migrate deploy && pnpm run db:seed"]
 FROM node:${NODE_VERSION}-bookworm-slim AS runner
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0 \
     STORAGE_DRIVER=local STORAGE_LOCAL_PATH=/data/storage
-RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/* \
-  && mkdir -p /data/storage && chown -R node:node /data
+# Runtime tidak butuh paket OS tambahan: Node membawa CA sendiri dan Prisma 7 (driver adapter) tanpa engine native.
+RUN mkdir -p /data/storage && chown -R node:node /data
 WORKDIR /app
 COPY --from=build --chown=node:node /app/public ./public
 COPY --from=build --chown=node:node /app/.next/standalone ./
