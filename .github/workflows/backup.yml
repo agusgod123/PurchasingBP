@@ -1,0 +1,50 @@
+# Backup harian database Supabase/PostgreSQL ke artefak GitHub (terenkripsi).
+# Secrets yang diperlukan (Settings → Secrets and variables → Actions):
+#   BACKUP_DATABASE_URL  koneksi langsung/session pooler (port 5432), BUKAN transaction pooler
+#   BACKUP_PASSPHRASE    kata sandi enkripsi (simpan juga di brankas password kantor)
+# Restore: lihat docs/deployment/README.md bagian "Backup & restore".
+name: Backup database
+
+on:
+  schedule:
+    - cron: "30 18 * * *" # 02:30 WITA
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Cek konfigurasi
+        env:
+          URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          PASS: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$PASS" ]; then
+            echo "::warning::BACKUP_DATABASE_URL / BACKUP_PASSPHRASE belum diisi — backup dilewati."
+            echo "SKIP=1" >> "$GITHUB_ENV"
+          fi
+      - name: Pasang klien PostgreSQL 16
+        if: env.SKIP != '1'
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-16
+      - name: pg_dump + enkripsi
+        if: env.SKIP != '1'
+        env:
+          DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          stamp=$(date -u +%Y%m%d-%H%M)
+          /usr/lib/postgresql/16/bin/pg_dump "$DATABASE_URL" -Fc --no-owner --no-privileges --schema=public -f db.dump
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$PASSPHRASE" --symmetric --cipher-algo AES256 -o "db-$stamp.dump.gpg" db.dump
+          rm db.dump
+          ls -lh db-*.dump.gpg
+      - uses: actions/upload-artifact@v4
+        if: env.SKIP != '1'
+        with:
+          name: backup-db-${{ github.run_id }}
+          path: db-*.dump.gpg
+          retention-days: 30

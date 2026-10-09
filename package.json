@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "build:deploy": "prisma generate && prisma migrate deploy && next build",
+    "build:hosting": "node scripts/deploy-build.mjs",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",

@@ -1,0 +1,11 @@
+# Netlify (alternatif Vercel). Adapter Next.js dipasang otomatis oleh Netlify.
+[build]
+  command = "pnpm run build:hosting"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Tugas terjadwal: netlify/functions/cron-*.mts (Netlify Scheduled Functions).
+[functions]
+  node_bundler = "esbuild"

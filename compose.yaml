@@ -1,0 +1,118 @@
+# =====================================================================
+# e-Pengadaan — paket on-premise lengkap (Docker Compose)
+#   db        PostgreSQL 16 (data di volume)
+#   migrate   menjalankan migrasi + data dasar, lalu berhenti
+#   app       aplikasi Next.js (dokumen disimpan di volume)
+#   proxy     Caddy: HTTPS otomatis (Let's Encrypt) atau sertifikat internal
+#   scheduler cron: email, pengingat persetujuan, tugas harian, backup harian
+#
+# Jalankan:  cp .env.example .env  (lalu isi)  →  docker compose up -d --build
+# =====================================================================
+name: e-pengadaan
+
+x-app-env: &app-env
+  DATABASE_URL: postgresql://${POSTGRES_USER:-pengadaan}:${POSTGRES_PASSWORD:?isi POSTGRES_PASSWORD di .env}@db:5432/${POSTGRES_DB:-pengadaan}
+  DIRECT_URL: postgresql://${POSTGRES_USER:-pengadaan}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-pengadaan}
+  APP_URL: ${APP_URL:?isi APP_URL di .env}
+  APP_NAME: ${APP_NAME:-e-Pengadaan}
+  SESSION_SECRET: ${SESSION_SECRET:?isi SESSION_SECRET di .env}
+  CRON_SECRET: ${CRON_SECRET:?isi CRON_SECRET di .env}
+  STORAGE_DRIVER: local
+  STORAGE_LOCAL_PATH: /data/storage
+  EMAIL_TRANSPORT: ${EMAIL_TRANSPORT:-log}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_SECURE: ${SMTP_SECURE:-false}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  SMTP_FROM: ${SMTP_FROM:-e-Pengadaan <no-reply@localhost>}
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pengadaan}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-pengadaan}
+      TZ: ${TZ:-Asia/Makassar}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      target: migrator
+      args:
+        NEXT_PUBLIC_APP_TIMEZONE: ${NEXT_PUBLIC_APP_TIMEZONE:-Asia/Makassar}
+    environment:
+      <<: *app-env
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runner
+      args:
+        NEXT_PUBLIC_APP_TIMEZONE: ${NEXT_PUBLIC_APP_TIMEZONE:-Asia/Makassar}
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-10}
+    volumes:
+      - storage:/data/storage
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+
+  scheduler:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "/deploy/scheduler.sh"]
+    environment:
+      CRON_SECRET: ${CRON_SECRET}
+      APP_INTERNAL_URL: http://app:3000
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER:-pengadaan}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-pengadaan}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-30}
+      TZ: ${TZ:-Asia/Makassar}
+    volumes:
+      - ./deploy:/deploy:ro
+      - ./backups:/backups
+      - storage:/data/storage:ro
+    depends_on:
+      - app
+
+volumes:
+  db-data:
+  storage:
+  caddy-data:
+  caddy-config:

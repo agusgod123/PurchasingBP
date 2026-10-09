@@ -1,0 +1,14 @@
+# SITE_ADDRESS:
+#   - domain publik (mis. pengadaan.kantor.co.id) → sertifikat Let's Encrypt otomatis
+#   - "localhost" atau IP internal               → sertifikat internal Caddy (impor CA ke perangkat kantor)
+{$SITE_ADDRESS} {
+	encode zstd gzip
+	request_body {
+		max_size 60MB
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	reverse_proxy app:3000
+}
